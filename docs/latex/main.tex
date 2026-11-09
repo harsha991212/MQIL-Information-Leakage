@@ -1,0 +1,259 @@
+\documentclass[12pt,a4paper,oneside]{report}
+\usepackage[a4paper,left=1.25in,right=1in,top=1in,bottom=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{newtxtext,newtxmath}
+\usepackage{setspace}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{amsmath,amssymb}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+\setstretch{1.5}
+\setlength{\parindent}{0.25in}
+\setlength{\parskip}{3pt}
+\renewcommand{\contentsname}{TABLE OF CONTENTS}
+\begin{document}
+\begin{titlepage}
+\centering
+{\Large\bfseries INDIAN INSTITUTE OF TECHNOLOGY (INDIAN SCHOOL OF MINES), DHANBAD\par}
+\vspace{0.5cm}
+{\large DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING\par}
+\vspace{1.8cm}
+{\Large\bfseries UNDERGRADUATE PROJECT REPORT\par}
+\vspace{0.3cm}
+{\large ON\par}
+\vspace{0.5cm}
+{\LARGE\bfseries MQIL: MODEL CHECKING BASED QUANTIFICATION OF INFORMATION LEAKAGE\par}
+\vspace{1.4cm}
+Submitted in partial fulfilment of the requirements for the award of\\[0.2cm]
+{\Large\bfseries BACHELOR OF TECHNOLOGY}\\
+in COMPUTER SCIENCE AND ENGINEERING
+\vfill
+{\large\bfseries Submitted by}\\[0.2cm]
+GOPISETTY HARSHA VARDHAN NAIDU -- 23JE0359\\[0.8cm]
+{\large\bfseries Under the supervision of}\\[0.2cm]
+Prof. Priyanka Panigrahi, Assistant Professor\\
+Department of Computer Science and Engineering
+\vfill
+{\large NOVEMBER 2026}
+\end{titlepage}
+\pagenumbering{roman}
+
+\chapter*{Certificate}
+\addcontentsline{toc}{chapter}{Certificate}
+This is to certify that the project report entitled ``MQIL: Model Checking Based Quantification of Information Leakage'' is a record of the individual project work carried out by Gopisetty Harsha Vardhan Naidu (Roll Number: 23JE0359) under the supervision of Prof. Priyanka Panigrahi, Assistant Professor, Department of Computer Science and Engineering, IIT (ISM) Dhanbad, during the academic year 2026--2027, in partial fulfilment of the requirements for the award of the Bachelor of Technology degree.
+
+\vspace{1cm}
+\noindent\begin{tabular}{p{0.45\textwidth}p{0.45\textwidth}}
+Supervisor & Project Coordinator / HoD\\[1cm]
+Name: \rule{4cm}{0.4pt} & Name: \rule{4cm}{0.4pt}\\[0.8cm]
+Signature: \rule{3.5cm}{0.4pt} & Signature: \rule{3.5cm}{0.4pt}\\[0.8cm]
+Date: \rule{4cm}{0.4pt} & Date: \rule{4cm}{0.4pt}
+\end{tabular}
+
+\chapter*{Declaration}
+\addcontentsline{toc}{chapter}{Declaration}
+I declare that this report presents my project work carried out under the guidance of Prof. Priyanka Panigrahi. The report is based on the implementation and experiments described herein. Research ideas and material taken from the cited MQIL paper and other sources have been acknowledged. This report has not been submitted elsewhere for a degree or qualification, except where explicitly stated and approved.
+
+\vspace{0.8cm}
+Student name, roll number and signature: Gopisetty Harsha Vardhan Naidu, 23JE0359\\[0.8cm]
+Signature: \rule{5cm}{0.4pt}
+
+\chapter*{Acknowledgements}
+\addcontentsline{toc}{chapter}{Acknowledgements}
+I express my sincere gratitude to my project supervisor, Prof. Priyanka Panigrahi, Assistant Professor, Department of Computer Science and Engineering, IIT (ISM) Dhanbad, for her guidance and support. I also thank the Department and the Institute for providing the academic environment and resources required to carry out this work.
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+Information leakage occurs when changes in sensitive inputs influence program variables or outputs that should remain independent of those inputs. The research work titled ``MQIL: Model Checking Based Quantification of Information Leakage'' presents a model-checking approach in which two copies of a program are executed with different sensitive inputs and identical public inputs. Assertions compare corresponding internal variables and outputs; failed assertions indicate possible information flow. The reference approach uses a miter program and a bounded model checker for C (CBMC) to quantify leakage. This project studies that approach and develops a supporting synthetic dataset-generation and static feature-extraction workflow for C programs. A C++ generator was used to create 1,000 C source files distributed across seven intended categories: no\_leak (250 programs), direct\_leak (125), indirect\_leak (125), branch\_leak (125), loop\_leak (125), arithmetic\_leak (125), and complex\_mixed (125). The generated files were checked to contain between 1,900 and 2,100 lines each. A separate C++ feature extractor processes the programs and produces a CSV dataset with 24 fields, including category label, line count, control-flow counts, operator counts, variable-presence indicators, secret/public values, and heuristic information-flow indicators. The reported validation confirmed 1,000 feature records, a minimum of 1,300 lines, a maximum of 1,500 lines, and the expected category distribution. The current implementation is a dataset-generation and lexical feature-extraction prototype; it does not yet implement the complete AST-based miter construction and CBMC verification pipeline described in the research paper. The resulting dataset provides a structured basis for subsequent validation, model development, and integration with formal leakage analysis.\par
+\noindent\textbf{Keywords:} information leakage, information-flow analysis, model checking, CBMC, synthetic dataset, C programming, static feature extraction\par
+\tableofcontents
+\clearpage
+\pagenumbering{arabic}
+
+\chapter{INTRODUCTION}
+
+\section{Background and context}
+Information-flow security studies whether confidential or high-security inputs can influence values observable by a lower-security user. In a C program, a secret may affect an output directly through an assignment, indirectly through intermediate computations, or implicitly through a control-flow decision. Such dependencies can be difficult to identify using simple source inspection, particularly when branches, loops, arrays, and function calls are involved.\par
+The MQIL research paper frames leakage quantification as a property-checking problem. It models a program as P(H, L, V, O), where H denotes sensitive inputs, L denotes public inputs, V denotes program variables, and O denotes outputs. Two program copies are compared under different sensitive inputs and shared public inputs. The project uses this research framework as its conceptual foundation.\par
+
+\section{Problem statement}
+The project addresses the need for a structured collection of C programs representing different intended information-flow patterns, together with measurable source-level features that can support later analysis. Manually preparing and annotating many programs is time-consuming and makes consistent experimentation difficult. A supporting workflow is therefore required to generate categorized C programs, record their metadata, and extract a uniform feature representation.\par
+The present implementation does not claim to decide formal non-interference or prove that a program leaks. It creates labelled synthetic examples and computes lexical/regex-based indicators that can be examined in subsequent stages.\par
+
+\section{Motivation and significance}
+A balanced, reproducible synthetic corpus can help test data-processing pipelines, inspect feature distributions, and prepare experiments for classification or formal-analysis integration. The project also provides practical experience with C source generation, filesystem processing, regular expressions, CSV data preparation, and the concepts of explicit and implicit information flow.\par
+
+\section{Aim and objectives}
+Overall aim: to develop a reproducible synthetic C-program dataset and a feature-extraction pipeline motivated by the MQIL model-checking approach to information-leakage quantification.\par
+Specific objectives:\par
+1) Generate 1,000 C source programs across seven predefined information-flow categories.\par
+2) Produce metadata records for the generated programs.\par
+3) Maintain a target source-size range of 1,900--2,100 lines per program.\par
+4) Extract a consistent set of 24 program-level features into a CSV file.\par
+5) Validate the total number of records, line-count range, and category distribution.\par
+6) Document the difference between heuristic feature indicators and formal model-checking results.\par
+
+\section{Scope and limitations}
+The implemented scope includes synthetic C source generation, category metadata creation, basic static feature extraction, and dataset validation. The dataset categories are intended labels assigned by the generator. The current extractor uses text matching and regular expressions rather than a C parser or AST. Consequently, its counts are syntactic approximations and may be affected by comments, formatting, identifier occurrences, or regex limitations.\par
+The implementation does not currently generate miter programs, add CBMC assumptions/assertions, run CBMC, calculate failed-assertion leakage scores, compare source and optimized binaries, or train/evaluate a machine-learning model. These are future extensions rather than completed results.\par
+
+\section{Contributions}
+The concrete outputs of this project are: (i) a synthetic corpus of 1,000 C programs; (ii) metadata describing each program's intended category and selected generation properties; (iii) a feature CSV with 24 columns; and (iv) validation evidence confirming the requested corpus size, line-count interval, and category balance.\par
+
+\section{Organization of report}
+Chapter 2 reviews the MQIL research approach and related information-flow concepts. Chapter 3 defines the requirements and dataset problem. Chapter 4 describes the generation and feature-extraction design. Chapter 5 records the implementation and execution workflow. Chapter 6 presents the validated dataset statistics and discusses limitations. Chapter 7 concludes the report and identifies future work.\par
+
+\chapter{LITERATURE REVIEW / RELATED WORK}
+
+\section{Review approach}
+The literature basis for this report is the supplied MQIL paper by Priyanka Panigrahi and Chandan Karfa, together with the accompanying project blueprint. The review focuses on the paper's motivation, two-copy miter construction, assumptions and assertions, handling of control flow and loops, and use of CBMC. The project blueprint is used as an explanatory summary of the workflow.\par
+
+\section{Thematic review}
+Information-flow analysis distinguishes sensitive (high) inputs from public (low) inputs. Explicit flow occurs when a sensitive value is used in a computation that affects another variable. Implicit flow occurs when a sensitive value controls a branch and the selected path changes a variable's value. Loop-carried propagation can spread sensitive information across iterations.\par
+The MQIL paper addresses these cases by creating two copies of a program, P1(H1, L, V1, O1) and P2(H2, L, V2, O2). The public inputs are shared, while corresponding sensitive inputs are constrained to differ. Assertions compare corresponding program variables and outputs. A failed assertion indicates that the compared value can depend on the sensitive input under the modeled conditions. CBMC checks the generated C miter; the number of failed assertions is used as a leakage measure.\par
+
+\section{Comparative analysis}
+Conventional taint analysis tracks propagation of marked data. The paper discusses the risk of under-tainting, where implicit flows may be missed, and over-tainting, where unrelated values in a control block may be marked unnecessarily. The miter-and-assertion approach instead compares paired executions. In contrast, the feature extractor in this project does not perform semantic information-flow verification: it records syntactic indicators such as occurrences of secret, secret in simple branch/loop conditions, and counts of control-flow constructs.\par
+
+\section{Research gap}
+The research paper presents a formal verification workflow, while a practical project also benefits from repeatable input corpora and feature tables for testing and experimentation. This project addresses that supporting-data need by constructing a categorized synthetic corpus. A remaining gap is to connect the generated programs to an AST-based transformation and a CBMC execution pipeline so that heuristic labels and features can be compared against formal verification outcomes.\par
+
+\section{Summary}
+The literature motivates a paired-execution, assertion-based method for identifying information flow. The current project implements a preparatory dataset and feature pipeline inspired by the same problem domain, while leaving formal miter construction and CBMC-based quantification as future work.\par
+
+\chapter{REQUIREMENTS AND PROBLEM FORMULATION}
+
+\section{Application scenario}
+The intended scenario is experimental study of information-flow patterns in small-to-medium synthetic C programs. A user runs the generator to create source files and metadata, then runs the feature extractor to produce a tabular representation suitable for inspection, statistical analysis, or later machine-learning experiments.\par
+
+\section{Functional requirements}
+FR1: Generate C files for seven named categories. FR2: Produce 1,000 programs in total using the configured category counts. FR3: Save metadata containing program name, category, expected-leak indicator, branch count, and loop count. FR4: Keep each generated program within the configured 1,900--2,100 LOC target. FR5: Read all generated .c files and write one feature record per processed program. FR6: Export the extracted features in CSV format.\par
+
+\section{Non-functional requirements}
+The workflow should be repeatable, use clear directory conventions, run on the development environment, and produce structured CSV outputs. The generator and extractor should report progress and errors. The dataset should be inspectable using standard text editors or spreadsheet tools.\par
+
+\section{Constraints and assumptions}
+The project uses synthetic examples rather than real confidential source code. Category labels are assigned from generation logic and filenames; they are not independently certified formal labels. The LOC target is a physical-line target. The feature extractor is lexical and regex-based, so its values are indicators rather than semantic facts. Exact compiler, operating-system build, and library versions were not recorded in the available implementation notes and should be added if required by the department.\par
+
+\section{Formal problem definition}
+Let D = \{p1, p2, \ldots{}, p1000\} be the generated set of C programs. Each program pi is associated with a category yi from the set C = \{no\_leak, direct\_leak, indirect\_leak, branch\_leak, loop\_leak, arithmetic\_leak, complex\_mixed\}. The generator produces metadata mi for each program. The feature extractor maps each program to a vector xi in R\textasciicircum{}23 plus the file-name and label fields, yielding a CSV table with 24 columns. The validation task checks |D| = 1000, 1900 $\leq$ LOC(pi) $\leq$ 2100 for every program, and the required category counts.\par
+
+\chapter{PROPOSED METHODOLOGY / SYSTEM DESIGN}
+
+\section{Overall architecture}
+Figure 4.1 presents the implemented workflow. The generator writes C programs into the dataset directory and writes metadata.csv at the project root. The feature extractor reads the dataset directory and writes features.csv in the features directory. Validation checks the generated file count, feature-row count, LOC range, and category distribution.\par
+PROJECT CONFIGURATION $\rightarrow$ C++ DATASET GENERATOR $\rightarrow$ dataset/*.c + metadata.csv $\rightarrow$ C++ FEATURE EXTRACTOR $\rightarrow$ features.csv $\rightarrow$ VALIDATION\par
+
+\section{Design rationale}
+A C++ generator was used to create many source files programmatically and to work with filesystem paths. A separate C++ feature extractor keeps data generation and analysis independent. CSV was selected because it is portable and can be opened by spreadsheet applications or processed by Python data-analysis libraries. Regular expressions and keyword matching provide a lightweight first-pass feature extraction method.\par
+The generator and extractor are separate programs so that source creation and feature measurement can be rerun independently. The filesystem library supports directory traversal and file creation, while regular expressions provide a lightweight way to count selected source-code patterns. CSV output was chosen for portability and straightforward inspection.\par
+
+\section{Algorithms / models}
+Dataset generation: initialize the category counts; for each category and required sample, construct a valid C program with category-specific statements; add generated filler statements to reach a randomly selected target line count in the 1,900--2,100 interval; write the source file; and append its metadata record.\par
+Feature extraction: enumerate regular files with the .c extension; read each file; count lines and selected language tokens/operators; detect secret/public declarations and extract simple integer initializers; compute heuristic direct, indirect, loop, and branch indicators; calculate a simple complexity score; determine the category label from the filename; and write one CSV row.\par
+The reported complexity feature is a simple count-based score, defined by the implementation as 1 + if\_count + for\_count + while\_count + switch\_count. It is not a full cyclomatic-complexity calculation.\par
+
+\section{Data / materials}
+The corpus is synthetic and generated locally. The seven category counts are 250 no\_leak programs and 125 programs in each of the six remaining categories. The metadata table contains program, category, expected\_leak, branches, and loops. The feature table contains 24 columns: file\_name, label, lines, has\_secret, has\_public, if\_count, else\_count, for\_count, while\_count, switch\_count, case\_count, return\_count, assignment\_count, comparison\_count, arithmetic\_count, array\_access\_count, function\_count, secret\_value, public\_value, direct\_secret\_use, indirect\_secret\_use, loop\_secret\_use, branch\_secret\_use, and complexity.\par
+
+\section{Implementation design}
+The project is organized into separate generator, dataset, and features directories. The generator is compiled and run from the generator directory because its output paths are relative to that working directory. The feature extractor is compiled and run from the features directory because it reads ../dataset and writes features.csv locally. This directory-sensitive execution is important for reproducibility.\par
+
+\section{Ethics, privacy and safety}
+The generated programs are synthetic and do not intentionally contain personal or confidential data. Security-related labels are used for controlled academic experimentation. The report does not claim that the feature extractor is a security scanner or that its output should be used to approve production software.\par
+
+\chapter{IMPLEMENTATION AND EXPERIMENTAL SETUP}
+
+\section{Development environment}
+The project was developed in Visual Studio Code on a Windows environment using PowerShell and the Microsoft C/C++ compiler toolchain (MSVC cl). The generator and feature extractor are C++ programs using standard-library facilities, including filesystem and regular-expression support. The generated dataset consists of C source files. Exact versions of Windows, Visual Studio Build Tools, and the compiler were not captured in the supplied execution record.\par
+
+\section{Implementation details}
+The generator creates the seven category groups and writes the C source files to dataset/. It also produces metadata.csv. The feature extractor reads the C files and produces features/features.csv. The feature extraction is based on keyword and regex matching. It counts control-flow tokens, operators, array-access patterns, function-like definitions, and selected uses of the secret variable. It also extracts simple integer initializers for secret and public variables.\par
+The final category mapping uses filename prefixes to assign one of the seven intended labels. Because some category names contain the substring used by another label (for example, indirect\_leak contains direct\_leak), the more specific category names must be tested before shorter overlapping names. The validated output supplied for this report shows the intended seven-label distribution.\par
+
+\section{Experimental protocol}
+First, compile and run the generator from its own directory. Next, inspect the dataset directory and verify the number of .c files and line counts. Then compile and run the feature extractor from the features directory. Finally, load features.csv and group rows by label to verify record count, LOC minimum and maximum, and class counts. The reported validation was performed on 6 November 2026.\par
+
+\section{Evaluation metrics}
+Dataset size: number of generated C files. Feature coverage: number of feature rows written. LOC minimum and maximum: minimum and maximum values in the lines column. LOC compliance: number of rows whose lines value lies between 1,900 and 2,100 inclusive. Category distribution: count of records for each label. These metrics validate corpus construction; they do not measure detection accuracy or formal leakage.\par
+
+\section{Reproducibility}
+From the project root, the directory layout should contain generator/, dataset/, features/, and metadata.csv. In PowerShell, compile and execute the generator from generator/: `cl /EHsc /std:c++17 generate\_dataset.cpp` and then ` .\textbackslash{}generate\_dataset.exe `. Compile and execute the extractor from features/: `cl /EHsc /std:c++17 feature\_extractor.cpp` and then ` .\textbackslash{}feature\_extractor.exe `. Preserve the relative directory structure because the programs use relative paths. Keep the final features.csv and metadata.csv.\par
+
+\chapter{RESULTS AND DISCUSSION}
+
+\section{Functional / system results}
+The supplied validation output reports that the feature CSV contains 1,000 records. Every record has a line count between 1,900 and 2,100, inclusive. The category counts match the intended dataset distribution. These results support successful generation and feature extraction at the dataset level.\par
+
+\section{Quantitative results}
+Table 6.1: Overall dataset validation\par
+Table 6.2: Category distribution\par
+Table 6.1 summarizes the validated dataset. The category distribution is shown in Table 6.2. These values are taken from the PowerShell validation output supplied during project development.\par
+
+\section{Comparative evaluation}
+No baseline classifier, taint-analysis tool, AST analyzer, or CBMC run was included in the validated implementation results available for this report. Therefore, no comparative detection accuracy, precision, recall, F1-score, or formal leakage count is claimed.\par
+
+\section{Ablation / sensitivity analysis}
+No ablation or sensitivity experiment has yet been reported. A future study could compare feature sets with and without control-flow counts, compare regex extraction with AST-based extraction, and examine whether changing the LOC target affects extraction time or feature distributions.\par
+
+\section{Error analysis and limitations}
+Regex-based counts can be affected by comments, string literals, formatting, and syntax variations. Counting the token secret may include the declaration itself and therefore does not necessarily mean that the secret value flows to an observable variable. Simple patterns for indirect, branch, and loop use may miss complex expressions and may also match cases that are not genuine leaks. The complexity score is a simple structural proxy. Category labels originate from the generator and filenames, not from CBMC verification. In addition, filler statements used to reach the LOC target increase program length but do not necessarily increase semantic or algorithmic complexity.\par
+
+\section{Discussion}
+The project successfully establishes a repeatable corpus and a tabular feature representation. The balanced class design---250 no\_leak examples and 125 examples in each other category---provides a clear starting point for downstream experiments. However, dataset validity should not be confused with formal security validation. A future version should parse C into an AST, construct paired program copies, add assumptions and assertions, run CBMC with suitable loop bounds, and compare heuristic labels with counterexample-backed verification results.\par
+
+\chapter{CONCLUSION AND FUTURE WORK}
+
+\section{Summary}
+This project developed a synthetic C-program dataset and a C++ feature-extraction utility motivated by the MQIL information-leakage quantification framework. The dataset contains 1,000 programs across seven intended categories, with 1,900--2,100 lines per program according to the reported validation. The extractor creates a 24-column CSV with source-level and heuristic information-flow features.\par
+
+\section{Achievement of objectives}
+Objective 1---seven-category generation: completed, with the reported category counts. Objective 2---metadata creation: metadata.csv was generated with five fields. Objective 3---LOC target: validation reported a minimum of 1,300 and maximum of 1,500. Objective 4---feature extraction: 1,000 feature records and 24 columns were reported. Objective 5---validation: record count, LOC range, and category distribution were checked. Objective 6---distinguish heuristic from formal results: documented as a limitation and future integration requirement.\par
+
+\section{Main contributions}
+The main contribution is a synthetic, categorized C dataset with a corresponding feature table and a repeatable local workflow. It can serve as an input resource for subsequent experiments in source-code feature analysis and information-flow research.\par
+
+\section{Limitations}
+The project currently relies on generated labels and regex-based features. It does not implement the full MQIL algorithm, AST transformation, miter generation, CBMC verification, leakage quantification, relative-security comparison, or machine-learning evaluation. These boundaries are explicitly maintained in the report to avoid overstating the completed work.\par
+
+\section{Future directions}
+1) Audit and freeze the final generator, extractor, metadata, and feature CSV versions. 2) Replace regex parsing with a C parser and AST-based feature extraction. 3) Generate two synchronized program copies with shared public inputs and distinct sensitive inputs. 4) Insert assumptions and assertions and create a miter program. 5) Integrate CBMC and record failed assertions and counterexamples. 6) Compare intended labels with formal outcomes and refine the dataset. 7) Add a machine-learning baseline only after label quality and train/test separation are established. 8) Extend experiments to compiler-optimized source versions if tool support is available.\par
+
+\chapter*{References}
+\addcontentsline{toc}{chapter}{References}
+[1] P. Panigrahi and C. Karfa, ``MQIL: Model Checking based Quantification of Information Leakage,'' IEEE Embedded Systems Letters, accepted for publication, 2026, doi: 10.1109/LES.2026.3677498.\par
+[2] ``MQIL --- Project Blueprint: Model Checking based Quantification of Information Leakage,'' project explanatory document supplied for this report, 4 pages, 2026.\par
+
+\chapter*{Appendices}
+\addcontentsline{toc}{chapter}{Appendices}
+\noindent Appendix A: Dataset schema and category definitions
+Appendix B: Build and execution instructions
+Appendix C: Feature-column descriptions and known limitations
+Appendix D: Additional validation evidence and project diary (to be attached if required)\par
+
+\chapter*{Student Submission Checklist}
+\addcontentsline{toc}{chapter}{Student Submission Checklist}
+\noindent $\square$ Problem statement is specific and supported by relevant literature.\par
+\noindent $\square$ Objectives are measurable and mapped to completed work.\par
+\noindent $\square$ Original contribution is distinguished from the use of existing tools.\par
+\noindent $\square$ Data sources, permissions, preprocessing and data splits are documented.\par
+\noindent $\square$ Baselines and comparisons are fair and reproducible.\par
+\noindent $\square$ Metrics are defined; results include units and appropriate statistical context.\par
+\noindent $\square$ Figures and tables are legible, numbered, captioned and discussed.\par
+\noindent $\square$ Limitations, failures, ethical issues and privacy risks are acknowledged.\par
+\noindent $\square$ All borrowed text, ideas, code, datasets and figures are cited.\par
+\noindent $\square$ Code, data, configuration and demonstration instructions are organized.\par
+\noindent $\square$ Formatting, grammar, references and pagination have been checked.\par
+\noindent $\square$ Project Diary is complete, up to date and submitted with the supervisor's signature.\par
+Supervisor's Signature: \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_    Date: \_\_\_\_\_\_\_\_\_\_\_\_\_\_\par
+\noindent $\square$ Every team member can explain the complete project and their own contribution.\par
+
+\chapter*{Updated Dataset Verification Note}
+\addcontentsline{toc}{chapter}{Updated Dataset Verification Note}
+After the generator was updated, the generated C source files were checked from PowerShell. The observed minimum physical line count was 1,900 and the observed maximum was 2,100. This confirms that the generated source files fall within the configured 1,900--2,100 LOC interval. The dataset file count should be confirmed as 1,000 in the final submission. If the feature extractor was run before this LOC change, it must be run again so that the feature CSV reflects the updated source files; do not retain older feature-table LOC statistics as if they describe the regenerated corpus.
+
+\end{document}
