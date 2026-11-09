@@ -18,8 +18,4 @@ To edit online, upload the contents of `docs/latex/` as a project to Overleaf.
 ## Implementation scope
 The implemented work described here is the synthetic C dataset-generation and lexical/regex-based feature-extraction workflow. Do not describe AST-based miter construction, CBMC execution, formal leakage quantification, or ML evaluation as completed unless separately implemented and verified.
 
-## Before public upload
-1. Review formatting and content with your supervisor.
-2. Check that student details are intended for public display.
-3. Ensure reported results match the final dataset and feature CSV on your machine.
-4. Do not upload passwords, access tokens, or confidential material.
+
